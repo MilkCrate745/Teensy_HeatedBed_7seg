@@ -27,9 +27,9 @@ Temperature: 22.94 C
 
 // Set I/O pins
   // Heater on
-const int heaton = 14;
+const int heatOn = 14;
   // Segment pins
-int segpins[] = {1,2,3,4,5,6,7}; // for pins a,b,c,d,e,f,g
+int segmentPins[] = {1,2,3,4,5,6,7}; // for pins a,b,c,d,e,f,g
 int decimalPin = 0;
   // Digit select pins
 const int debounce = 10; // debounce time in ms
@@ -46,21 +46,21 @@ const int anaPin = 0;
 const float vcc = 5; // This value is likely wrong so don't actually use it
 const float r = 100; // kohm
 const float hyst = 1.5;
-const int tstate = 32; // Traget state
 
 // Variables
 int ana = 0;
-int heatstate = 0;
+int heatState = 0;
+int setTemp = 32; // Traget state
 float temp = 0;
-float lasttemp = 0;
-float sendtemp = 0;
+float lastTemp = 0;
+float sendTemp = 0;
 float vo = 0;
 float rt = 0;
 float i = 0;
 // Arrays - Data points for sensor B57550G1104
-float rtab[] = {1.6419, 1.8548, 2.1008, 2.3861, 2.7179, 3.1050, 3.5581, 4.0901, 4.7170, 5.4584, 6.3383, 7.3867, 8.6407, 10.147, 11.963, 14.164, 16.841, 20.114, 24.136, 29.100, 35.262, 42.950, 52.598, 64.776, 80.239, 100.00, 125.42, 158.34, 201.27, 257.69, 332.40};
-float ttab[] = {150.00, 145.00, 140.00, 135.00, 130.00, 125.00, 120.00, 115.00, 110.00, 105.00, 100.00, 95.000, 90.000, 85.000, 80.000, 75.000, 70.000, 65.000, 60.000, 55.000, 50.000, 45.000, 40.000, 35.000, 30.000, 25.000, 20.000, 15.000, 10.000, 5.0000, 0.0000};
-int arrSize = sizeof(rtab) / sizeof(float); // calculate array size
+float resistanceTable[] = {1.6419, 1.8548, 2.1008, 2.3861, 2.7179, 3.1050, 3.5581, 4.0901, 4.7170, 5.4584, 6.3383, 7.3867, 8.6407, 10.147, 11.963, 14.164, 16.841, 20.114, 24.136, 29.100, 35.262, 42.950, 52.598, 64.776, 80.239, 100.00, 125.42, 158.34, 201.27, 257.69, 332.40};
+float temperatureTable[] = {150.00, 145.00, 140.00, 135.00, 130.00, 125.00, 120.00, 115.00, 110.00, 105.00, 100.00, 95.000, 90.000, 85.000, 80.000, 75.000, 70.000, 65.000, 60.000, 55.000, 50.000, 45.000, 40.000, 35.000, 30.000, 25.000, 20.000, 15.000, 10.000, 5.0000, 0.0000};
+int arrSize = sizeof(resistanceTable) / sizeof(float); // calculate array size
 // Count
 long int cnt = 0;
 
@@ -69,10 +69,10 @@ void setup() {
 
   // Set I/O pin modes
     // Heat on
-  pinMode(heaton, OUTPUT);
+  pinMode(heatOn, OUTPUT);
     // Segments
   for (int i=0; i < 7; i++) {
-     pinMode(segpins[i], OUTPUT);
+     pinMode(segmentPins[i], OUTPUT);
   }
   pinMode(decimalPin, OUTPUT);
     // Digit select - set HIGH to prevent flickering at startup
@@ -111,7 +111,7 @@ float FmultiMap(float val, float * _in, float * _out, uint8_t size) {
 
 int displayReset() {
   for (int i = 0; i < 7; i++) {
-    digitalWrite(segpins[i], LOW);
+    digitalWrite(segmentPins[i], LOW);
   }
   digitalWrite(decimalPin, LOW);
   return(0);
@@ -135,7 +135,7 @@ int SevenSegDisplay(uint8_t msd, uint8_t mid, uint8_t lsd, int decimal) {
   // Write MSD
   for (int i = 0; i < 7; i++) {
     if (numMatrix[msd][i] == 1) {
-      digitalWrite(segpins[i], HIGH);
+      digitalWrite(segmentPins[i], HIGH);
     }
   }
   if (decimal == 2) digitalWrite(decimalPin, HIGH);
@@ -147,7 +147,7 @@ int SevenSegDisplay(uint8_t msd, uint8_t mid, uint8_t lsd, int decimal) {
   // Write middle digit
   for (int i = 0; i < 7; i++) {
     if (numMatrix[mid][i] == 1) {
-      digitalWrite(segpins[i], HIGH);
+      digitalWrite(segmentPins[i], HIGH);
     }
   }
   if (decimal == 1) digitalWrite(decimalPin, HIGH);
@@ -159,7 +159,7 @@ int SevenSegDisplay(uint8_t msd, uint8_t mid, uint8_t lsd, int decimal) {
   // Write LSD digit
   for (int i = 0; i < 7; i++) {
     if (numMatrix[lsd][i] == 1) {
-      digitalWrite(segpins[i], HIGH);
+      digitalWrite(segmentPins[i], HIGH);
     }
   }
   if (decimal == 0) digitalWrite(decimalPin, HIGH);
@@ -181,41 +181,39 @@ void loop() {
   i = ((vcc - vo ) / r); // mA
   rt = r * ana / (1023 - ana); // kohm
   float pwr = vcc * vcc / (r + rt); // nW
-  temp = FmultiMap(rt, rtab, ttab, arrSize);
+  temp = FmultiMap(rt, resistanceTable, temperatureTable, arrSize);
 
   // Heating element logic
-  if (lasttemp == 0) {
-    lasttemp = temp;
-    if (temp < tstate) digitalWrite(heaton, HIGH);
+  if (lastTemp == 0) {
+    lastTemp = temp;
+    if (temp < setTemp) digitalWrite(heatOn, HIGH);
   }
-  if (temp != lasttemp){
-    if (heatstate == 0 && temp >= (tstate + hyst)) {
-      digitalWrite(heaton, LOW); 
-      heatstate = 1;
+  if (temp != lastTemp){
+    if (heatState == 0 && temp >= (setTemp + hyst)) {
+      digitalWrite(heatOn, LOW); 
+      heatState = 1;
     }
-    else if (heatstate == 1 && temp <= (tstate - hyst)) {
-      digitalWrite(heaton, HIGH);
-      heatstate = 0;
+    else if (heatState == 1 && temp <= (setTemp - hyst)) {
+      digitalWrite(heatOn, HIGH);
+      heatState = 0;
     }  
   }
-  lasttemp = temp;
+  lastTemp = temp;
 
   // Print temperature to 7-segment display
+    // Delay on displayed temperature to prevent jitters
   if (cnt >= 100) {
-    sendtemp = temp; 
+    sendTemp = temp; 
     cnt = 0;
   }
-  
+    // Isolate digits
   uint8_t hundredths,tenths,ones,tens,hundreds;
-  hundreds = sendtemp / 100;
-  tens = (sendtemp - hundreds*100) / 10;
-  ones = (sendtemp - hundreds*100 - tens*10);
-  tenths = (sendtemp - hundreds*100 - tens*10 - ones) * 10;
-  hundredths = (sendtemp - hundreds*100 - tens*10 - ones) * 100 - tenths*10;
-  
-
-  
-  
+  hundreds = sendTemp / 100;
+  tens = (sendTemp - hundreds*100) / 10;
+  ones = (sendTemp - hundreds*100 - tens*10);
+  tenths = (sendTemp - hundreds*100 - tens*10 - ones) * 10;
+  hundredths = (sendTemp - hundreds*100 - tens*10 - ones) * 100 - tenths*10;
+    // Determin decimal placement and call SevenSegDisplay function to print the temperature
   if (temp < 10) {
     // Display 2 decimal points
     SevenSegDisplay(ones, tenths, hundredths, 2);
@@ -229,6 +227,20 @@ void loop() {
     SevenSegDisplay(hundreds, tens, ones, 0);
   }
   cnt = cnt + 1;
+
+  // Temperature adjustment buttons
+  upsw.update();
+  downsw.update();
+  if (upsw.fallingEdge()) {
+    setTemp = setTemp + 1;
+    sendTemp = setTemp;
+    cnt = 0;
+  }
+  if (downsw.fallingEdge()) {
+    setTemp = setTemp - 1;
+    sendTemp = setTemp;
+    cnt = 0;
+  }
 
   // Print to serial console
     // Count
@@ -266,7 +278,6 @@ void loop() {
   Serial.println(ones);
   Serial.println(tenths);
   Serial.println(hundredths);
-  //delay(15);
 }
 
 
