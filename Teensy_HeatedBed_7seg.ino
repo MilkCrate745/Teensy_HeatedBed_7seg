@@ -213,19 +213,7 @@ void loop() {
   ones = (sendTemp - hundreds*100 - tens*10);
   tenths = (sendTemp - hundreds*100 - tens*10 - ones) * 10;
   hundredths = (sendTemp - hundreds*100 - tens*10 - ones) * 100 - tenths*10;
-    // Determin decimal placement and call SevenSegDisplay function to print the temperature
-  if (temp < 10) {
-    // Display 2 decimal points
-    SevenSegDisplay(ones, tenths, hundredths, 2);
-  }
-  else if (temp < 100 && temp >= 10) {
-    // Distplay 1 decimal point
-    SevenSegDisplay(tens, ones, tenths, 1);
-  }
-  else {
-    // No decimal points
-    SevenSegDisplay(hundreds, tens, ones, 0);
-  }
+  
   cnt = cnt + 1;
 
   // Temperature adjustment buttons
@@ -240,6 +228,24 @@ void loop() {
     setTemp = setTemp - 1;
     sendTemp = setTemp;
     cnt = 0;
+  }
+  hundreds = sendTemp / 100;
+  tens = (sendTemp - hundreds*100) / 10;
+  ones = (sendTemp - hundreds*100 - tens*10);
+  tenths = (sendTemp - hundreds*100 - tens*10 - ones) * 10;
+  hundredths = (sendTemp - hundreds*100 - tens*10 - ones) * 100 - tenths*10;
+  // Determin decimal placement and call SevenSegDisplay function to print the temperature
+  if (sendTemp < 10) {
+    // Display 2 decimal points
+    SevenSegDisplay(ones, tenths, hundredths, 2);
+  }
+  else if (sendTemp < 100 && sendTemp >= 10) {
+    // Distplay 1 decimal point
+    SevenSegDisplay(tens, ones, tenths, 1);
+  }
+  else {
+    // No decimal points
+    SevenSegDisplay(hundreds, tens, ones, 0);
   }
 
   // Print to serial console
