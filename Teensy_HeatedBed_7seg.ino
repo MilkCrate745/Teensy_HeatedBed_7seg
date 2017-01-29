@@ -23,11 +23,11 @@ Rt: 110.49 kOhm
 Temperature: 22.94 C
    
 */
-#include <Bounce.h>
+#include <Bounce2.h>
 
 // Set I/O pins
   // Heater on
-const int heatOn = 14;
+const int heatOn = 13;
   // Segment pins
 int segmentPins[] = {1,2,3,4,5,6,7}; // for pins a,b,c,d,e,f,g
 int decimalPin = 0;
@@ -37,8 +37,11 @@ const int digit1 = 8;
 const int digit2 = 9;
 const int digit3 = 10;
   // Temperature adjustment inputs
-Bounce downsw = Bounce(12, debounce);
-Bounce upsw = Bounce(13, debounce);
+const int downPin = 11;
+const int upPin = 12;
+Bounce downSw = Bounce(downPin, debounce);
+Bounce upSw = Bounce(upPin, debounce);
+
   // Analog pin
 const int anaPin = 0;
 
@@ -65,7 +68,7 @@ int arrSize = sizeof(resistanceTable) / sizeof(float); // calculate array size
 long int cnt = 0;
 
 void setup() {
-  Serial.begin(9600); // USB is always 12 Mbit/sec
+  //Serial.begin(9600); // USB is always 12 Mbit/sec
 
   // Set I/O pin modes
     // Heat on
@@ -83,8 +86,8 @@ void setup() {
   digitalWrite(digit2, HIGH);
   digitalWrite(digit3, HIGH);
     // Temp select inputs
-  pinMode(12, INPUT_PULLUP);
-  pinMode(13, INPUT_PULLUP);
+  pinMode(downPin, INPUT_PULLUP); // Down
+  pinMode(upPin, INPUT_PULLUP); // Up
 }
 
 /*
@@ -119,6 +122,15 @@ int displayReset() {
 
 // Function to print value to 3 digit 7 segment display
 int SevenSegDisplay(uint8_t msd, uint8_t mid, uint8_t lsd, int decimal) {
+  /*       _
+           a
+     _  |f   b|
+    |_|   -g-   
+    |_| |e   c|
+           d
+           ¯
+  */   
+  // Numbers 0 - 9 for 7 seg display
   int numMatrix[10][7] = {
     {1,1,1,1,1,1,0},
     {0,1,1,0,0,0,0},
@@ -214,17 +226,17 @@ void loop() {
   tenths = (sendTemp - hundreds*100 - tens*10 - ones) * 10;
   hundredths = (sendTemp - hundreds*100 - tens*10 - ones) * 100 - tenths*10;
   
-  cnt = cnt + 1;
+  cnt++;
 
   // Temperature adjustment buttons
-  upsw.update();
-  downsw.update();
-  if (upsw.fallingEdge()) {
+  upSw.update();
+  downSw.update();
+  if (upSw.fallingEdge()) {
     setTemp = setTemp + 1;
-    sendTemp = setTemp;
-    cnt = 0;
+    sendTemp = setTemp; // Display the set temp
+    cnt = 0; // Reset cnt to 0 so set temp is displayed for some time
   }
-  if (downsw.fallingEdge()) {
+  if (downSw.fallingEdge()) {
     setTemp = setTemp - 1;
     sendTemp = setTemp;
     cnt = 0;
@@ -248,6 +260,7 @@ void loop() {
     SevenSegDisplay(hundreds, tens, ones, 0);
   }
 
+/*
   // Print to serial console
     // Count
   Serial.print("------------- ");
@@ -284,6 +297,7 @@ void loop() {
   Serial.println(ones);
   Serial.println(tenths);
   Serial.println(hundredths);
+  */
 }
 
 
